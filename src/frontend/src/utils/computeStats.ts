@@ -253,6 +253,12 @@ export function computeStats(
       pair: "US30",
       pnl: Math.round(sorted.reduce((s, e) => s + e.us30Pct, 0) * 100) / 100,
     },
+    {
+      pair: "AUDUSD",
+      pnl:
+        Math.round(sorted.reduce((s, e) => s + (e.audusdPct ?? 0), 0) * 100) /
+        100,
+    },
   ];
 
   // Weekly P&L

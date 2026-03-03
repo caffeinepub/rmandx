@@ -378,12 +378,12 @@ export function GoalsTab({ settings }: GoalsTabProps) {
           <span
             className="text-xs font-mono px-2 py-1 rounded"
             style={{
-              background: "rgba(123,94,167,0.12)",
-              border: "1px solid rgba(123,94,167,0.3)",
-              color: "#7b5ea7",
+              background: "rgba(155,123,199,0.12)",
+              border: "1px solid rgba(155,123,199,0.3)",
+              color: "#9b7bc7",
             }}
           >
-            v1.0
+            v2.00
           </span>
         </div>
 
@@ -391,9 +391,10 @@ export function GoalsTab({ settings }: GoalsTabProps) {
           className="text-xs font-mono leading-relaxed"
           style={{ color: "#4a5068" }}
         >
-          Download the RmandX EA and install it in MT4 to automatically push
-          your closed trade data and daily summaries to this dashboard — no
-          manual entry required.
+          When you attach the RmandX EA v2.00 to any chart in MT4, it
+          immediately scans your full account history and sends every trading
+          day to this dashboard. Live trade closes and daily summaries continue
+          to sync automatically — no manual entry required.
         </p>
 
         {/* Download button */}
@@ -403,16 +404,16 @@ export function GoalsTab({ settings }: GoalsTabProps) {
           data-ocid="goals.ea.download_button"
           className="flex items-center justify-center gap-2 w-full py-3 rounded font-orbitron font-bold text-sm tracking-widest transition-all"
           style={{
-            background: "rgba(123,94,167,0.1)",
-            border: "1px solid rgba(123,94,167,0.5)",
-            color: "#7b5ea7",
-            boxShadow: "0 0 16px rgba(123,94,167,0.15)",
+            background: "rgba(155,123,199,0.1)",
+            border: "1px solid rgba(155,123,199,0.5)",
+            color: "#9b7bc7",
+            boxShadow: "0 0 16px rgba(155,123,199,0.15)",
             textDecoration: "none",
             display: "flex",
           }}
         >
           <Download size={14} />
-          DOWNLOAD RmandX_EA.mq4
+          DOWNLOAD RmandX_EA v2.00
         </a>
 
         {/* Setup steps */}
@@ -436,25 +437,25 @@ export function GoalsTab({ settings }: GoalsTabProps) {
             },
             {
               step: "02",
-              text: "In MT4, press F4 (MetaEditor) → Compile the EA. Close MetaEditor.",
+              text: "In MT4 press F4 (MetaEditor) → Compile the EA. You should see 0 errors.",
             },
             {
               step: "03",
-              text: 'In MT4, go to Tools → Options → Expert Advisors. Check "Allow WebRequest for listed URL" and add this site\'s URL.',
+              text: "Go to Tools → Options → Expert Advisors → check 'Allow WebRequest for listed URL' → add your Webhook URL shown below.",
             },
             {
               step: "04",
-              text: "Drag the RmandX EA onto any chart. In the Inputs tab, paste your Webhook URL (shown below) and set a secret password.",
+              text: "Drag the EA onto any chart. In Inputs: set WebhookURL to your webhook URL below. Set WebhookSecret to any password. Set SendFullHistoryOnLoad = true.",
             },
             {
               step: "05",
-              text: "Enable AutoTrading (F7). The EA will send data every time a trade closes and once per day at 22:00 server time.",
+              text: "Enable AutoTrading (F7). On load, ALL historical trades sync immediately. Future trade closes and daily summaries at 22:00 server time sync automatically.",
             },
           ].map(({ step, text }) => (
             <div key={step} className="flex gap-3 text-xs font-mono">
               <span
                 className="shrink-0 font-orbitron font-bold"
-                style={{ color: "#7b5ea7" }}
+                style={{ color: "#9b7bc7" }}
               >
                 {step}
               </span>
@@ -488,6 +489,31 @@ export function GoalsTab({ settings }: GoalsTabProps) {
                 : "https://your-canister.icp0.io/webhook/mt4"}
             </span>
           </div>
+        </div>
+
+        {/* On-load history sync info panel */}
+        <div
+          className="rounded p-4 space-y-2"
+          style={{
+            background: "rgba(0,245,255,0.04)",
+            border: "1px solid rgba(0,245,255,0.15)",
+          }}
+        >
+          <div
+            className="text-xs font-mono tracking-widest font-bold"
+            style={{ color: "#00f5ff" }}
+          >
+            ON-LOAD HISTORY SYNC
+          </div>
+          <p
+            className="text-xs font-mono leading-relaxed"
+            style={{ color: "#4a5068" }}
+          >
+            With SendFullHistoryOnLoad = true, the EA scans every closed trade
+            in your MT4 history the moment it is attached to a chart. Each day
+            is grouped and sent as a daily summary. This runs once per chart
+            attachment — reattach the EA any time to re-sync.
+          </p>
         </div>
 
         {/* Data notes */}

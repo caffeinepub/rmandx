@@ -21,11 +21,18 @@ export default function App() {
   const { data: entriesRaw, isLoading: entriesLoading } = useAllEntries();
   const { data: settingsRaw, isLoading: settingsLoading } = useSettings();
 
-  const entries: DayEntry[] = entriesRaw ?? SAMPLE_DATA;
+  // entriesRaw === null/undefined means backend not yet loaded or failed (show sample)
+  // entriesRaw === [] means backend loaded with zero real entries (show empty state, not sample)
+  const backendLoaded = entriesRaw !== null && entriesRaw !== undefined;
+  const hasRealEntries = backendLoaded && entriesRaw.length > 0;
+  const entries: DayEntry[] = hasRealEntries
+    ? entriesRaw
+    : !backendLoaded
+      ? SAMPLE_DATA
+      : [];
   const settings = settingsRaw ?? DEFAULT_SETTINGS;
-  const isSampleData =
-    !entriesRaw ||
-    (entriesRaw.length > 0 && entriesRaw[0]?.source === "sample");
+  // Only show sample data badge when we are genuinely showing sample data (not when empty but real)
+  const isSampleData = !backendLoaded;
 
   const stats = useMemo(
     () => computeStats(entries, settings),

@@ -55,9 +55,17 @@ function generateSampleData(): DayEntry[] {
       Math.round(pnlPct * (0.1 + Math.random() * 0.2) * 100) / 100;
     const xauusdPct =
       Math.round(pnlPct * (0.1 + Math.random() * 0.15) * 100) / 100;
+    const audusdPct =
+      Math.round(pnlPct * (0.05 + Math.random() * 0.1) * 100) / 100;
     const us30Pct =
       Math.round(
-        (pnlPct - gbpjpyPct - eurusdPct - usdjpyPct - gbpusdPct - xauusdPct) *
+        (pnlPct -
+          gbpjpyPct -
+          eurusdPct -
+          usdjpyPct -
+          gbpusdPct -
+          xauusdPct -
+          audusdPct) *
           100,
       ) / 100;
 
@@ -95,6 +103,7 @@ function generateSampleData(): DayEntry[] {
       gbpusdPct,
       xauusdPct,
       us30Pct,
+      audusdPct,
       note: notes[Math.floor(Math.random() * notes.length)],
       source: "sample",
     });

@@ -23,6 +23,7 @@ export interface DayEntry {
   'asiaPct' : number,
   'us30Pct' : number,
   'usdjpyPct' : number,
+  'audusdPct' : number,
   'nyPct' : number,
   'psych' : bigint,
   'xauusdPct' : number,

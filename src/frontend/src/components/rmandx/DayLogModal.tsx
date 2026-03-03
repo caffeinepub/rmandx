@@ -30,6 +30,7 @@ const EMPTY_FORM = {
   gbpusdPct: "",
   xauusdPct: "",
   us30Pct: "",
+  audusdPct: "",
   psych: 3,
   commissions: "",
   slippage: "",
@@ -65,6 +66,7 @@ export function DayLogModal({
         gbpusdPct: String(existingEntry.gbpusdPct),
         xauusdPct: String(existingEntry.xauusdPct),
         us30Pct: String(existingEntry.us30Pct),
+        audusdPct: String(existingEntry.audusdPct ?? 0),
         psych: Number(existingEntry.psych),
         commissions: String(existingEntry.commissions),
         slippage: String(existingEntry.slippage),
@@ -97,6 +99,7 @@ export function DayLogModal({
       gbpusdPct: n(form.gbpusdPct),
       xauusdPct: n(form.xauusdPct),
       us30Pct: n(form.us30Pct),
+      audusdPct: n(form.audusdPct),
       psych: BigInt(form.psych),
       commissions: n(form.commissions),
       slippage: n(form.slippage),
@@ -318,6 +321,7 @@ export function DayLogModal({
                   "gbpusdPct",
                   "xauusdPct",
                   "us30Pct",
+                  "audusdPct",
                 ] as (keyof FormState)[]
               ).map((key) => {
                 const label = key.replace("Pct", "").toUpperCase();

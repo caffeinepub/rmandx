@@ -1,35 +1,55 @@
 //+------------------------------------------------------------------+
 //|                                                     RmandX_EA.mq4 |
 //|                         RmandX Trading Performance Tracker        |
-//|                   Sends closed trade data to RmandX webhook        |
+//|   Sends closed trade data to RmandX webhook — on load + live      |
 //+------------------------------------------------------------------+
 #property copyright "RmandX"
-#property version   "1.00"
+#property version   "2.00"
 #property strict
 
 //--- Input parameters
-input string   WebhookURL     = "https://YOUR_CANISTER_ID.icp0.io/webhook/mt4";
-input string   WebhookSecret  = "YOUR_WEBHOOK_SECRET";
-input bool     SendOnClose    = true;   // Send data each time a trade closes
-input bool     SendDailySummary = true; // Send a daily summary at end of day
-input int      DailySummaryHour = 22;  // Hour (server time) to send daily summary (0-23)
-input bool     DebugMode      = false;  // Log debug messages to Experts tab
+input string   WebhookURL        = "https://YOUR_CANISTER_ID.icp0.io/webhook/mt4";
+input string   WebhookSecret     = "YOUR_WEBHOOK_SECRET";
+input bool     SendFullHistoryOnLoad = true;  // Send ALL historical trades on EA load
+input bool     SendOnClose       = true;      // Send data each time a trade closes
+input bool     SendDailySummary  = true;      // Send a daily summary at end of day
+input int      DailySummaryHour  = 22;        // Hour (server time) to send daily summary (0-23)
+input bool     DebugMode         = false;     // Log debug messages to Experts tab
 
 //--- Internal state
-datetime lastDailyCheck = 0;
-int      lastDailyDay   = -1;
+int      lastDailyDay    = -1;
+datetime lastKnownClose  = 0;
 
 //+------------------------------------------------------------------+
-//| Expert initialization function                                   |
+//| Expert initialization function — fires when EA is loaded          |
 //+------------------------------------------------------------------+
 int OnInit()
 {
-   Print("RmandX EA initialized. Webhook: ", WebhookURL);
+   Print("RmandX EA v2.00 initializing. Webhook: ", WebhookURL);
+
    if (StringFind(WebhookURL, "YOUR_CANISTER_ID") >= 0)
    {
       Alert("RmandX EA: Please set your WebhookURL in EA inputs before running.");
       return INIT_FAILED;
    }
+
+   // ------------------------------------------------------------------
+   // FULL HISTORY LOAD — send every historical day to the dashboard
+   // This runs once when the EA is first attached to a chart so that
+   // ALL past trade data is immediately visible in RmandX.
+   // ------------------------------------------------------------------
+   if (SendFullHistoryOnLoad)
+   {
+      Print("RmandX EA: Starting full history export…");
+      SendFullHistoryToWebhook();
+      Print("RmandX EA: Full history export complete.");
+   }
+
+   // Remember the most recent close so OnTrade only fires for NEW closes
+   int total = OrdersHistoryTotal();
+   if (total > 0 && OrderSelect(total - 1, SELECT_BY_POS, MODE_HISTORY))
+      lastKnownClose = OrderCloseTime();
+
    return INIT_SUCCEEDED;
 }
 
@@ -42,7 +62,7 @@ void OnDeinit(const int reason)
 }
 
 //+------------------------------------------------------------------+
-//| Expert tick function                                             |
+//| Expert tick function — fires on every new quote                   |
 //+------------------------------------------------------------------+
 void OnTick()
 {
@@ -56,7 +76,7 @@ void OnTick()
    if (dt.hour == DailySummaryHour && dt.day != lastDailyDay)
    {
       lastDailyDay = dt.day;
-      SendDailySummaryToWebhook();
+      SendDailySummaryForDate(TimeCurrent());
    }
 }
 
@@ -71,51 +91,96 @@ void OnTrade()
    int total = OrdersHistoryTotal();
    if (total == 0) return;
 
-   // Check the last closed order
    if (!OrderSelect(total - 1, SELECT_BY_POS, MODE_HISTORY)) return;
    if (OrderType() > OP_SELL) return;  // Skip balance/credit ops
 
    datetime closeTime = OrderCloseTime();
-   if (closeTime == 0) return; // Still open
+   if (closeTime == 0 || closeTime <= lastKnownClose) return;
 
-   // Only act if closed very recently (within last 10 seconds)
-   if (TimeCurrent() - closeTime > 10) return;
-
-   SendTradeToWebhook();
+   lastKnownClose = closeTime;
+   SendSingleTradeToWebhook();
 }
 
 //+------------------------------------------------------------------+
-//| Build daily stats from today's history and send to webhook       |
+//| Scan the ENTIRE trade history, group by date, send each day      |
 //+------------------------------------------------------------------+
-void SendDailySummaryToWebhook()
+void SendFullHistoryToWebhook()
 {
-   datetime today_start = StringToTime(TimeToString(TimeCurrent(), TIME_DATE));
-   datetime today_end   = today_start + 86400;
+   int total = OrdersHistoryTotal();
+   if (total == 0)
+   {
+      Print("RmandX EA: No history found.");
+      return;
+   }
 
-   double   totalProfit  = 0;
-   double   totalGross   = 0;
-   double   totalLoss    = 0;
-   double   totalComm    = 0;
-   double   totalSwap    = 0;
-   int      tradeCount   = 0;
-   int      wins         = 0;
-   double   totalRR      = 0;
+   // Collect all unique dates first
+   string dates[];
+   int    dateCount = 0;
 
-   // Session buckets (server time hours, adjust to your broker's GMT offset)
+   for (int i = 0; i < total; i++)
+   {
+      if (!OrderSelect(i, SELECT_BY_POS, MODE_HISTORY)) continue;
+      if (OrderType() > OP_SELL) continue;
+      if (OrderCloseTime() == 0) continue;
+
+      string d = TimeToString(OrderCloseTime(), TIME_DATE);
+      StringReplace(d, ".", "-");
+
+      // Check if date is already in list
+      bool found = false;
+      for (int j = 0; j < dateCount; j++)
+      {
+         if (dates[j] == d) { found = true; break; }
+      }
+      if (!found)
+      {
+         ArrayResize(dates, dateCount + 1);
+         dates[dateCount] = d;
+         dateCount++;
+      }
+   }
+
+   Print("RmandX EA: Found ", dateCount, " unique trading days to export.");
+
+   // Send one summary per unique date
+   for (int d = 0; d < dateCount; d++)
+   {
+      SendDaySummaryForDateStr(dates[d]);
+      Sleep(200); // small delay to avoid hammering the webhook
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Send summary for a given date string (YYYY-MM-DD)                |
+//+------------------------------------------------------------------+
+void SendDaySummaryForDateStr(const string &dateStr)
+{
+   // Convert "YYYY-MM-DD" back to a datetime for range calculation
+   // Use StringToTime which expects "YYYY.MM.DD" format
+   string dotDate = dateStr;
+   StringReplace(dotDate, "-", ".");
+   datetime dayStart = StringToTime(dotDate);
+   datetime dayEnd   = dayStart + 86400;
+
+   double totalProfit = 0, totalGross = 0, totalLoss = 0;
+   double totalComm = 0, totalSwap = 0, totalRR = 0;
+   int    tradeCount = 0, wins = 0;
+
    double londonProfit = 0, nyProfit = 0, asiaProfit = 0;
-   double gbpjpy = 0, eurusd = 0, usdjpy = 0, gbpusd = 0, xauusd = 0, us30 = 0, audusd = 0;
+   double gbpjpy = 0, eurusd = 0, usdjpy = 0, gbpusd = 0;
+   double xauusd = 0, us30 = 0, audusd = 0;
 
    int total = OrdersHistoryTotal();
    for (int i = 0; i < total; i++)
    {
       if (!OrderSelect(i, SELECT_BY_POS, MODE_HISTORY)) continue;
-      if (OrderType() > OP_SELL)  continue; // Skip balance/credit
-      if (OrderCloseTime() < today_start || OrderCloseTime() >= today_end) continue;
+      if (OrderType() > OP_SELL) continue;
+      if (OrderCloseTime() < dayStart || OrderCloseTime() >= dayEnd) continue;
 
       double profit = OrderProfit();
       double comm   = MathAbs(OrderCommission());
       double swap   = OrderSwap();
-      double net    = profit + swap; // gross before comm
+      double net    = profit + swap;
 
       tradeCount++;
       totalProfit += net;
@@ -125,21 +190,17 @@ void SendDailySummaryToWebhook()
       if (net > 0) { totalGross += net; wins++; }
       else          { totalLoss  += MathAbs(net); }
 
-      // R:R approximation
       double sl = MathAbs(OrderOpenPrice() - OrderStopLoss());
       double tp = MathAbs(OrderTakeProfit() - OrderOpenPrice());
       if (sl > 0 && tp > 0) totalRR += tp / sl;
 
-      // Session by close hour (server time)
       MqlDateTime ct;
       TimeToStruct(OrderCloseTime(), ct);
       int h = ct.hour;
-      // London: 07:00-15:59 UTC, NY: 13:00-21:59 UTC, Asia: 23:00-07:59 UTC
       if (h >= 7  && h <= 15) londonProfit += net;
       if (h >= 13 && h <= 21) nyProfit     += net;
       if (h >= 23 || h <= 7)  asiaProfit   += net;
 
-      // Pair breakdown
       string sym = OrderSymbol();
       StringToUpper(sym);
       if (StringFind(sym, "GBPJPY") >= 0) gbpjpy += net;
@@ -151,36 +212,23 @@ void SendDailySummaryToWebhook()
       if (StringFind(sym, "AUDUSD") >= 0) audusd += net;
    }
 
-   if (tradeCount == 0)
-   {
-      if (DebugMode) Print("RmandX EA: No trades today, skipping summary.");
-      return;
-   }
+   if (tradeCount == 0) return; // No trades on this date — skip
 
-   // Balance-relative P&L %
-   double balance  = AccountBalance();
-   double pnlPct   = (balance > 0) ? (totalProfit / balance) * 100.0 : 0;
-   double commPct  = (balance > 0) ? (totalComm   / balance) * 100.0 : 0;
-   double slipPct  = 0; // MT4 doesn't expose slippage natively
-   double avgRR    = (tradeCount > 0) ? totalRR / tradeCount : 0;
+   double balance = AccountBalance();
+   double pnlPct  = (balance > 0) ? (totalProfit / balance) * 100.0 : 0;
+   double commPct = (balance > 0) ? (totalComm   / balance) * 100.0 : 0;
+   double avgRR   = (tradeCount > 0) ? totalRR / tradeCount : 0;
+   double norm    = (balance > 0) ? (100.0 / balance) : 0;
 
-   // Normalize session/pair P&L to % of balance
-   double norm = (balance > 0) ? (100.0 / balance) : 0;
-
-   string dateStr = TimeToString(today_start, TIME_DATE);
-   // Replace spaces with hyphens (YYYY.MM.DD -> YYYY-MM-DD)
-   StringReplace(dateStr, ".", "-");
-
-   // Build JSON payload
    string json = "{";
-   json += "\"secret\":\""     + WebhookSecret  + "\",";
-   json += "\"date\":\""       + dateStr         + "\",";
-   json += "\"pnlPct\":"       + DoubleToString(pnlPct, 4)         + ",";
-   json += "\"trades\":"       + IntegerToString(tradeCount)        + ",";
-   json += "\"rr\":"           + DoubleToString(avgRR, 4)           + ",";
-   json += "\"riskPct\":0,";   // not calculable from MT4 history alone
-   json += "\"commissions\":"  + DoubleToString(commPct, 4)         + ",";
-   json += "\"slippage\":"     + DoubleToString(slipPct, 4)         + ",";
+   json += "\"secret\":\""     + WebhookSecret                        + "\",";
+   json += "\"date\":\""       + dateStr                               + "\",";
+   json += "\"pnlPct\":"       + DoubleToString(pnlPct, 4)            + ",";
+   json += "\"trades\":"       + IntegerToString(tradeCount)           + ",";
+   json += "\"rr\":"           + DoubleToString(avgRR, 4)             + ",";
+   json += "\"riskPct\":0,";
+   json += "\"commissions\":"  + DoubleToString(commPct, 4)           + ",";
+   json += "\"slippage\":0,";
    json += "\"sessions\":{";
    json += "\"london\":"       + DoubleToString(londonProfit * norm, 4) + ",";
    json += "\"ny\":"           + DoubleToString(nyProfit    * norm, 4) + ",";
@@ -193,21 +241,30 @@ void SendDailySummaryToWebhook()
    json += "\"xauusd\":"       + DoubleToString(xauusd * norm, 4) + ",";
    json += "\"us30\":"         + DoubleToString(us30   * norm, 4) + ",";
    json += "\"audusd\":"       + DoubleToString(audusd * norm, 4) + "},";
-   json += "\"psych\":3,";     // default neutral — user edits in RmandX
+   json += "\"psych\":3,";
    json += "\"note\":\"Auto-imported from MT4 EA\",";
    json += "\"source\":\"mt4-ea\"";
    json += "}";
 
-   string labelDaily = "DAILY SUMMARY";
-   PostToWebhook(json, labelDaily);
+   string labelStr = "HISTORY: " + dateStr;
+   PostToWebhook(json, labelStr);
 }
 
 //+------------------------------------------------------------------+
-//| Send a single closed trade event to the webhook                  |
+//| Send today's summary (called at DailySummaryHour)                |
 //+------------------------------------------------------------------+
-void SendTradeToWebhook()
+void SendDailySummaryForDate(datetime refTime)
 {
-   // Build a minimal single-trade payload
+   string dateStr = TimeToString(refTime, TIME_DATE);
+   StringReplace(dateStr, ".", "-");
+   SendDaySummaryForDateStr(dateStr);
+}
+
+//+------------------------------------------------------------------+
+//| Send a single just-closed trade event to the webhook             |
+//+------------------------------------------------------------------+
+void SendSingleTradeToWebhook()
+{
    double balance = AccountBalance();
    double profit  = OrderProfit() + OrderSwap();
    double comm    = MathAbs(OrderCommission());
@@ -224,10 +281,10 @@ void SendTradeToWebhook()
    string sym = OrderSymbol();
    StringToUpper(sym);
 
-   // Identify pair bucket
    string pairKey = "\"gbpjpy\":0,\"eurusd\":0,\"usdjpy\":0,\"gbpusd\":0,\"xauusd\":0,\"us30\":0,\"audusd\":0";
    double norm = (balance > 0) ? (100.0 / balance) : 0;
    double p    = profit * norm;
+
    if      (StringFind(sym, "GBPJPY") >= 0) StringReplace(pairKey, "\"gbpjpy\":0", "\"gbpjpy\":" + DoubleToString(p, 4));
    else if (StringFind(sym, "EURUSD") >= 0) StringReplace(pairKey, "\"eurusd\":0", "\"eurusd\":" + DoubleToString(p, 4));
    else if (StringFind(sym, "USDJPY") >= 0) StringReplace(pairKey, "\"usdjpy\":0", "\"usdjpy\":" + DoubleToString(p, 4));
@@ -237,23 +294,23 @@ void SendTradeToWebhook()
    else if (StringFind(sym, "AUDUSD") >= 0) StringReplace(pairKey, "\"audusd\":0", "\"audusd\":" + DoubleToString(p, 4));
 
    string json = "{";
-   json += "\"secret\":\""  + WebhookSecret + "\",";
-   json += "\"date\":\""    + closeDate      + "\",";
-   json += "\"pnlPct\":"    + DoubleToString(pnlPct,  4) + ",";
+   json += "\"secret\":\""    + WebhookSecret                     + "\",";
+   json += "\"date\":\""      + closeDate                          + "\",";
+   json += "\"pnlPct\":"      + DoubleToString(pnlPct,  4)        + ",";
    json += "\"trades\":1,";
-   json += "\"rr\":"        + DoubleToString(rr,      4) + ",";
+   json += "\"rr\":"          + DoubleToString(rr,      4)        + ",";
    json += "\"riskPct\":0,";
-   json += "\"commissions\":" + DoubleToString(commPct, 4) + ",";
+   json += "\"commissions\":" + DoubleToString(commPct, 4)        + ",";
    json += "\"slippage\":0,";
    json += "\"sessions\":{\"london\":0,\"ny\":0,\"asia\":0},";
-   json += "\"pairs\":{"    + pairKey + "},";
+   json += "\"pairs\":{"      + pairKey                           + "},";
    json += "\"psych\":3,";
    json += "\"note\":\"Auto-imported from MT4 EA — " + sym + "\",";
    json += "\"source\":\"mt4-ea\"";
    json += "}";
 
-   string labelTrade = "TRADE CLOSE";
-   PostToWebhook(json, labelTrade);
+   string labelStr = "TRADE CLOSE";
+   PostToWebhook(json, labelStr);
 }
 
 //+------------------------------------------------------------------+
@@ -269,14 +326,13 @@ void PostToWebhook(const string &payload, const string &label)
    string resultHeaders;
 
    StringToCharArray(payload, post, 0, WHOLE_ARRAY, CP_UTF8);
-   // Remove trailing null byte added by StringToCharArray
-   ArrayResize(post, ArraySize(post) - 1);
+   ArrayResize(post, ArraySize(post) - 1); // Remove trailing null
 
    int res = WebRequest(
       "POST",
       WebhookURL,
       headers,
-      5000,     // timeout ms
+      5000,
       post,
       result,
       resultHeaders
@@ -284,7 +340,7 @@ void PostToWebhook(const string &payload, const string &label)
 
    if (res == 200 || res == 201)
    {
-      Print("RmandX EA [", label, "] OK — HTTP ", res);
+      if (DebugMode) Print("RmandX EA [", label, "] OK — HTTP ", res);
    }
    else
    {

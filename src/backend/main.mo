@@ -3,11 +3,11 @@ import Float "mo:core/Float";
 import Nat "mo:core/Nat";
 import Array "mo:core/Array";
 import Iter "mo:core/Iter";
-import Time "mo:core/Time";
 import Text "mo:core/Text";
-import Order "mo:core/Order";
 import Runtime "mo:core/Runtime";
-import OutCall "http-outcalls/outcall";
+import Order "mo:core/Order";
+
+
 
 actor {
   module DayEntry {
@@ -31,24 +31,12 @@ actor {
     gbpusdPct : Float;
     xauusdPct : Float;
     us30Pct : Float;
+    audusdPct : Float;
     psych : Nat;
     commissions : Float;
     slippage : Float;
     note : Text;
     source : Text;
-  };
-
-  type AggregatedStats = {
-    totalPnlPct : Float;
-    winRate : Float;
-    profitFactor : Float;
-    expectancy : Float;
-    maxDrawdown : Float;
-    currentDrawdown : Float;
-    currentWinStreak : Nat;
-    currentLossStreak : Nat;
-    maxWinStreak : Nat;
-    maxLossStreak : Nat;
   };
 
   type UserSettings = {

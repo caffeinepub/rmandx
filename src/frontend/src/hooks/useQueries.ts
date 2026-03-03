@@ -8,13 +8,13 @@ export function useAllEntries() {
   return useQuery<DayEntry[]>({
     queryKey: ["allEntries"],
     queryFn: async () => {
-      if (!actor) return [];
+      if (!actor) return null as unknown as DayEntry[];
       try {
         const result = await actor.getAllDayEntries();
-        if (result.length === 0) return SAMPLE_DATA;
+        // Return real result (even if empty) — never substitute sample data here
         return result;
       } catch {
-        return SAMPLE_DATA;
+        return null as unknown as DayEntry[];
       }
     },
     enabled: !!actor && !isFetching,
