@@ -1,0 +1,468 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   RmandX — Cyberpunk Trading Terminal
+   Fonts loaded via Google Fonts in index.html
+   ============================================ */
+
+/* ============================================
+   Design Tokens — Dark Cyberpunk Terminal
+   ============================================ */
+
+@layer base {
+  :root {
+    --radius: 0.375rem;
+
+    /* Core backgrounds */
+    --background: 0.06 0.01 235;
+    --foreground: 0.92 0.02 220;
+
+    /* Cards / surfaces */
+    --card: 0.085 0.015 235;
+    --card-foreground: 0.92 0.02 220;
+
+    /* Popovers */
+    --popover: 0.1 0.02 235;
+    --popover-foreground: 0.92 0.02 220;
+
+    /* Primary: Electric Cyan #00f5ff */
+    --primary: 0.85 0.18 195;
+    --primary-foreground: 0.06 0.01 235;
+
+    /* Secondary: Neon Green #00ff88 */
+    --secondary: 0.88 0.22 145;
+    --secondary-foreground: 0.06 0.01 235;
+
+    /* Muted */
+    --muted: 0.15 0.02 235;
+    --muted-foreground: 0.45 0.04 235;
+
+    /* Accent: Purple #7b5ea7 */
+    --accent: 0.5 0.14 285;
+    --accent-foreground: 0.92 0.02 220;
+
+    /* Destructive: Alert red #ff2d55 */
+    --destructive: 0.58 0.22 12;
+    --destructive-foreground: 0.98 0 0;
+
+    /* Borders */
+    --border: 0.2 0.04 235;
+    --input: 0.18 0.04 235;
+    --ring: 0.85 0.18 195;
+
+    /* Chart colors */
+    --chart-1: 0.85 0.18 195;
+    --chart-2: 0.88 0.22 145;
+    --chart-3: 0.5 0.14 285;
+    --chart-4: 0.78 0.15 60;
+    --chart-5: 0.58 0.22 12;
+
+    /* Sidebar */
+    --sidebar: 0.07 0.015 235;
+    --sidebar-foreground: 0.92 0.02 220;
+    --sidebar-primary: 0.85 0.18 195;
+    --sidebar-primary-foreground: 0.06 0.01 235;
+    --sidebar-accent: 0.15 0.02 235;
+    --sidebar-accent-foreground: 0.92 0.02 220;
+    --sidebar-border: 0.2 0.04 235;
+    --sidebar-ring: 0.85 0.18 195;
+
+    /* Custom RmandX tokens */
+    --cyan: #00f5ff;
+    --neon-green: #00ff88;
+    --alert-red: #ff2d55;
+    --amber: #ffb800;
+    --purple: #7b5ea7;
+    --text-primary: #e8ecf4;
+    --text-muted: #4a5068;
+    --surface: #0b0d12;
+    --card-border: #1a2035;
+    --space-bg: #050608;
+  }
+
+  * {
+    @apply border-border;
+    box-sizing: border-box;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    background-color: var(--space-bg);
+    color: var(--text-primary);
+    font-family: "JetBrains Mono", "Geist Mono", monospace;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* ============================================
+     Background: Grid/Graph-Paper Pattern
+     ============================================ */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 39px,
+        rgba(0, 245, 255, 0.03) 39px,
+        rgba(0, 245, 255, 0.03) 40px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 39px,
+        rgba(0, 245, 255, 0.03) 39px,
+        rgba(0, 245, 255, 0.03) 40px
+      );
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ============================================
+     Scanline Overlay
+     ============================================ */
+  body::after {
+    content: "";
+    position: fixed;
+    top: -100%;
+    left: 0;
+    right: 0;
+    height: 30%;
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      rgba(0, 245, 255, 0.012) 50%,
+      transparent 100%
+    );
+    animation: scanline 8s linear infinite;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  #root {
+    position: relative;
+    z-index: 2;
+  }
+}
+
+/* ============================================
+   Keyframe Animations
+   ============================================ */
+
+@keyframes scanline {
+  0% { top: -100%; }
+  100% { top: 200%; }
+}
+
+@keyframes scanbar {
+  0% { left: -100%; }
+  100% { left: 200%; }
+}
+
+@keyframes borderFlashRed {
+  0%, 100% { box-shadow: 0 0 0 1px var(--alert-red); }
+  50% { box-shadow: 0 0 16px 2px var(--alert-red), 0 0 0 1px var(--alert-red); }
+}
+
+@keyframes cyanFlash {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 8px 1px rgba(0, 245, 255, 0.3), inset 0 0 8px rgba(0, 245, 255, 0.05); }
+  50% { box-shadow: 0 0 16px 4px rgba(0, 245, 255, 0.5), inset 0 0 12px rgba(0, 245, 255, 0.1); }
+}
+
+@keyframes goldGlowPulse {
+  0%, 100% { box-shadow: 0 0 12px 2px rgba(255, 184, 0, 0.4), 0 0 0 1px rgba(255, 184, 0, 0.3); }
+  50% { box-shadow: 0 0 24px 6px rgba(255, 184, 0, 0.6), 0 0 0 1px rgba(255, 184, 0, 0.5); }
+}
+
+@keyframes targetAcquiredIn {
+  0% { opacity: 0; transform: scale(1.05); }
+  10% { opacity: 1; transform: scale(1); }
+  80% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.98); }
+}
+
+@keyframes tabSlide {
+  from { transform: translateX(var(--tab-from, 0)); }
+  to { transform: translateX(0); }
+}
+
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes orbitronFadeIn {
+  from { opacity: 0; letter-spacing: 0.3em; }
+  to { opacity: 1; letter-spacing: normal; }
+}
+
+@keyframes borderFlashRedRepeat {
+  0%, 100% { border-color: var(--alert-red); box-shadow: 0 0 0 0 var(--alert-red); }
+  50% { border-color: var(--alert-red); box-shadow: 0 0 12px 3px rgba(255, 45, 85, 0.7); }
+}
+
+/* ============================================
+   Utility Classes
+   ============================================ */
+
+.font-orbitron { font-family: "Orbitron", monospace; }
+.font-mono-terminal { font-family: "JetBrains Mono", "Geist Mono", monospace; }
+
+.text-cyan { color: var(--cyan); }
+.text-neon-green { color: var(--neon-green); }
+.text-alert-red { color: var(--alert-red); }
+.text-amber { color: var(--amber); }
+.text-purple-accent { color: var(--purple); }
+.text-muted-terminal { color: var(--text-muted); }
+
+.bg-surface { background-color: var(--surface); }
+.bg-space { background-color: var(--space-bg); }
+
+/* Card with terminal border */
+.terminal-card {
+  background-color: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  box-shadow:
+    inset 0 0 8px rgba(0, 245, 255, 0.04),
+    0 0 1px rgba(0, 245, 255, 0.1);
+  transition: box-shadow 0.3s ease;
+}
+
+.terminal-card:hover {
+  box-shadow:
+    inset 0 0 14px rgba(0, 245, 255, 0.08),
+    0 0 12px rgba(0, 245, 255, 0.15),
+    0 0 1px rgba(0, 245, 255, 0.3);
+}
+
+/* Glowing card border hover */
+.glow-card-cyan {
+  border: 1px solid rgba(0, 245, 255, 0.2);
+  box-shadow: inset 0 0 8px rgba(0, 245, 255, 0.03);
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.glow-card-cyan:hover {
+  border-color: rgba(0, 245, 255, 0.5);
+  box-shadow: 0 0 16px rgba(0, 245, 255, 0.2), inset 0 0 12px rgba(0, 245, 255, 0.06);
+}
+
+.glow-card-green {
+  border: 1px solid rgba(0, 255, 136, 0.2);
+  box-shadow: inset 0 0 8px rgba(0, 255, 136, 0.03);
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.glow-card-green:hover {
+  border-color: rgba(0, 255, 136, 0.5);
+  box-shadow: 0 0 16px rgba(0, 255, 136, 0.2), inset 0 0 12px rgba(0, 255, 136, 0.06);
+}
+
+/* Flash red border */
+.flash-red-border {
+  animation: borderFlashRedRepeat 1s ease-in-out infinite;
+}
+
+/* Gold glow for #1 session */
+.gold-glow {
+  animation: goldGlowPulse 2s ease-in-out infinite;
+}
+
+/* Loading scan bar */
+.scan-bar {
+  position: relative;
+  overflow: hidden;
+  background-color: rgba(0, 245, 255, 0.05);
+  height: 3px;
+  border-radius: 2px;
+}
+.scan-bar::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  animation: scanbar 1.5s ease-in-out infinite;
+}
+
+/* Classified stamp badge */
+.stamp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 2px solid;
+  border-radius: 3px;
+  padding: 2px 8px;
+  font-family: "Orbitron", monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  transform: rotate(-1deg);
+  opacity: 0.9;
+}
+
+.stamp-badge.cyan {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  box-shadow: 0 0 8px rgba(0, 245, 255, 0.3);
+}
+
+.stamp-badge.green {
+  border-color: var(--neon-green);
+  color: var(--neon-green);
+  box-shadow: 0 0 8px rgba(0, 255, 136, 0.3);
+}
+
+.stamp-badge.amber {
+  border-color: var(--amber);
+  color: var(--amber);
+  box-shadow: 0 0 8px rgba(255, 184, 0, 0.3);
+}
+
+/* Tab active indicator */
+.tab-indicator {
+  position: absolute;
+  bottom: -1px;
+  height: 2px;
+  background: var(--cyan);
+  box-shadow: 0 0 8px var(--cyan), 0 0 16px rgba(0, 245, 255, 0.5);
+  border-radius: 2px;
+  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Calendar cell: glow for profit/loss */
+.cal-cell-profit {
+  box-shadow: 0 0 8px rgba(0, 255, 136, 0.3), inset 0 0 8px rgba(0, 255, 136, 0.05);
+}
+.cal-cell-loss {
+  box-shadow: 0 0 8px rgba(255, 45, 85, 0.3), inset 0 0 8px rgba(255, 45, 85, 0.05);
+}
+
+/* Chart glow filter */
+.chart-glow-cyan {
+  filter: drop-shadow(0 0 6px #00f5ff);
+}
+.chart-glow-green {
+  filter: drop-shadow(0 0 6px #00ff88);
+}
+.chart-glow-red {
+  filter: drop-shadow(0 0 6px #ff2d55);
+}
+
+/* Target Acquired overlay */
+.target-acquired-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 245, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  z-index: 9999;
+  animation: targetAcquiredIn 2.5s ease-in-out forwards;
+  pointer-events: none;
+}
+
+/* Diagonal texture on stat cards */
+.diagonal-texture {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 6px,
+    rgba(255, 255, 255, 0.015) 6px,
+    rgba(255, 255, 255, 0.015) 7px
+  );
+}
+
+/* Glowing orb buttons for mindset */
+.psych-orb {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 245, 255, 0.2);
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.psych-orb.active {
+  background: var(--cyan);
+  border-color: var(--cyan);
+  box-shadow: 0 0 12px var(--cyan), 0 0 24px rgba(0, 245, 255, 0.4);
+}
+.psych-orb:hover:not(.active) {
+  border-color: rgba(0, 245, 255, 0.5);
+  box-shadow: 0 0 6px rgba(0, 245, 255, 0.3);
+}
+
+/* Input: terminal style */
+.terminal-input {
+  background-color: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(0, 245, 255, 0.15);
+  color: var(--text-primary);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+  border-radius: 4px;
+  padding: 6px 10px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+  width: 100%;
+}
+.terminal-input:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 8px rgba(0, 245, 255, 0.2);
+}
+.terminal-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--space-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--card-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 245, 255, 0.3);
+}
+
+/* shadcn overrides for terminal theme */
+.dark .bg-background { background-color: var(--space-bg) !important; }
+
+/* Progress bar override */
+[role="progressbar"] > div {
+  background: linear-gradient(90deg, var(--cyan), rgba(0, 245, 255, 0.7));
+  box-shadow: 0 0 8px var(--cyan);
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
